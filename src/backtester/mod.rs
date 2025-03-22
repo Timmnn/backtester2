@@ -3,13 +3,16 @@ use chrono::{Datelike, NaiveDate, NaiveDateTime, Timelike};
 use crate::{
     algorithm::{self, Algorithm},
     backtest_data_service::DataService,
+    broker::{BacktesterAccess, Broker},
     event_queue::{EventDefinition, EventPayload, EventQueue, EventQueuePosition},
+    logging::{LogLevel, Logger},
 };
 
 pub struct Backtester {
     algorithms: Vec<Box<dyn Algorithm>>,
     event_queue: EventQueue,
     data_service: DataService,
+    broker: Box<BacktesterAccess>;
 }
 
 const PREFILL_QUEUE_DAYS: u32 = 5;
@@ -18,15 +21,13 @@ impl Backtester {
     pub fn new(mut algorithms: Vec<Box<dyn Algorithm>>) -> Self {
         let event_queue = EventQueue::new();
         let data_service = DataService::new();
-        let event_listeners: Vec<Vec<EventDefinition>> = algorithms
-            .iter_mut()
-            .map(|algorithm| algorithm.get_event_listeners())
-            .collect();
+        let mut broker: Box<dyn BacktesterAccess> = Box::new(Broker::new());
 
         Self {
             algorithms,
             event_queue,
             data_service,
+            broker
         }
     }
     pub fn run(&mut self) {
@@ -42,8 +43,15 @@ impl Backtester {
 
         let mut current_date = start_date;
         while current_date < end_date {
-            println!("Current Time is: {}", current_date);
-            println!("Event_Queue Length: {}", self.event_queue.len());
+            Logger::log(
+                LogLevel::Debug,
+                format!("Current BacktesterTime is: {}", current_date),
+            );
+
+            Logger::log(
+                LogLevel::Debug,
+                format!("EventQueue's length: {}", self.event_queue.len()),
+            );
 
             self.enqueue_predictable_events(
                 current_date,
@@ -87,7 +95,6 @@ impl Backtester {
                             };
 
                             if !self.event_queue.contains(&event_pos) {
-                                println!("{}", event_pos.time);
                                 self.event_queue.enqueue(event_pos);
                             }
 
