@@ -2,6 +2,7 @@ use backtester::{
     algorithm::Algorithm,
     backtester::Backtester,
     event_queue::{EventDefinition, EventPayload},
+    logging::{LogLevel, Logger},
 };
 use chrono::NaiveTime;
 
@@ -10,7 +11,7 @@ struct Algo1 {
 }
 impl Algorithm for Algo1 {
     fn on_event(&mut self, event: EventPayload) -> () {
-        println!("[ALGO] RECEIVED EVENT: {:?}", event);
+        Logger::log(LogLevel::Info, "Hi");
     }
 
     fn get_event_listeners(&self) -> Vec<EventDefinition> {
