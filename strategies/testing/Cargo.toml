@@ -1,0 +1,8 @@
+[package]
+name = "testing"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+backtester = {path="/Users/timmnicolaizik/Dev/AlgotradingPlatform/backtester"}
+chrono = "0.4.40"

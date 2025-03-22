@@ -1,15 +1,6 @@
-use crate::runtime::Runtime;
-
-pub enum EventListener {
-    SpecificTime(u64, Box<dyn Fn(&Runtime) -> () + 'static>),
-}
-
-pub struct DatasetSubscription {
-    pub name: String,
-    pub path: String,
-}
+use crate::event_queue::{EventDefinition, EventPayload};
 
 pub trait Algorithm {
-    fn register_events(&self) -> Vec<EventListener>; // Use a lifetime parameter
-    fn register_dataset_subscriptions(&self) -> Vec<DatasetSubscription>;
+    fn on_event(&mut self, event: EventPayload) -> ();
+    fn get_event_listeners(&self) -> Vec<EventDefinition>;
 }
