@@ -3,6 +3,7 @@ use backtester::{
     backtester::Backtester,
     event_queue::{EventDefinition, EventPayload},
     logging::{LogLevel, Logger},
+    runtime::Runtime,
 };
 use chrono::NaiveTime;
 
@@ -10,8 +11,20 @@ struct Algo1 {
     state: usize,
 }
 impl Algorithm for Algo1 {
-    fn on_event(&mut self, event: EventPayload) -> () {
-        Logger::log(LogLevel::Info, "Hi");
+    fn on_event(&mut self, event: EventPayload, runtime: &mut Runtime) -> () {
+        Logger::log(LogLevel::Info, "Processing Event");
+        let mut broker = runtime.broker.borrow_mut();
+
+        broker.order("SPY".to_string(), 1.0);
+
+        Logger::log(
+            LogLevel::Info,
+            format!(
+                "Current Holdings: {:?}. Current Balance {}",
+                broker.get_holdings(),
+                broker.get_balance()
+            ),
+        );
     }
 
     fn get_event_listeners(&self) -> Vec<EventDefinition> {
@@ -26,7 +39,7 @@ struct Algo2 {
     state: String,
 }
 impl Algorithm for Algo2 {
-    fn on_event(&mut self, _event: EventPayload) -> () {}
+    fn on_event(&mut self, _event: EventPayload, runtime: &mut Runtime) -> () {}
     fn get_event_listeners(&self) -> Vec<EventDefinition> {
         vec![]
     }

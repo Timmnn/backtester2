@@ -1,33 +1,40 @@
-use chrono::{Datelike, NaiveDate, NaiveDateTime, Timelike};
-
 use crate::{
     algorithm::{self, Algorithm},
     backtest_data_service::DataService,
+    backtest_logging::BacktestLog,
     broker::{BacktesterAccess, Broker},
     event_queue::{EventDefinition, EventPayload, EventQueue, EventQueuePosition},
     logging::{LogLevel, Logger},
+    runtime::Runtime,
 };
+use chrono::{Datelike, NaiveDate, NaiveDateTime, Timelike};
+use std::fs::File;
+use std::io::Write;
+use std::{cell::RefCell, rc::Rc};
 
 pub struct Backtester {
     algorithms: Vec<Box<dyn Algorithm>>,
     event_queue: EventQueue,
     data_service: DataService,
-    broker: Box<BacktesterAccess>;
+    runtime: Runtime,
+    broker: Rc<RefCell<dyn BacktesterAccess>>,
 }
 
 const PREFILL_QUEUE_DAYS: u32 = 5;
 
 impl Backtester {
-    pub fn new(mut algorithms: Vec<Box<dyn Algorithm>>) -> Self {
+    pub fn new(algorithms: Vec<Box<dyn Algorithm>>) -> Self {
         let event_queue = EventQueue::new();
         let data_service = DataService::new();
-        let mut broker: Box<dyn BacktesterAccess> = Box::new(Broker::new());
+        let broker: Rc<RefCell<Broker>> = Rc::new(RefCell::new(Broker::new()));
+        let runtime = Runtime::new(broker.clone());
 
         Self {
             algorithms,
             event_queue,
             data_service,
-            broker
+            broker,
+            runtime,
         }
     }
     pub fn run(&mut self) {
@@ -40,6 +47,15 @@ impl Backtester {
             .unwrap()
             .and_hms_opt(0, 0, 0)
             .unwrap();
+
+        let backtest_log = BacktestLog {
+            balance_history: vec![],
+            start_date,
+            end_date,
+            trades: vec![],
+        };
+
+        self.broker.borrow_mut().set_balance(10000.0);
 
         let mut current_date = start_date;
         while current_date < end_date {
@@ -66,11 +82,15 @@ impl Backtester {
                 Some(event) => {
                     current_date = event.time;
 
-                    self.algorithms[0].on_event(event.event);
+                    self.algorithms[0].on_event(event.event, &mut self.runtime);
                 }
                 None => {}
             }
         }
+
+        let json = serde_json::to_string_pretty(&backtest_log).unwrap();
+        let mut file = File::create("backtest.json").unwrap();
+        file.write_all(json.as_bytes()).unwrap();
     }
 
     fn enqueue_predictable_events(&mut self, from: NaiveDateTime, till: NaiveDateTime) {
