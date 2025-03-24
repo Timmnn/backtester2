@@ -10,6 +10,7 @@ use chrono::NaiveTime;
 struct Algo1 {
     state: usize,
 }
+
 impl Algorithm for Algo1 {
     fn on_event(&mut self, event: EventPayload, runtime: &mut Runtime) -> () {
         Logger::log(LogLevel::Info, "Processing Event");
