@@ -8,9 +8,9 @@ use crate::{
     runtime::Runtime,
 };
 use chrono::{Datelike, NaiveDate, NaiveDateTime, Timelike};
-use std::fs::File;
-use std::io::Write;
 use std::{cell::RefCell, rc::Rc};
+use std::{fs::File, path::Path};
+use std::{io::Write, path::PathBuf};
 
 pub struct Backtester {
     algorithms: Vec<Box<dyn Algorithm>>,
@@ -23,9 +23,9 @@ pub struct Backtester {
 const PREFILL_QUEUE_DAYS: u32 = 5;
 
 impl Backtester {
-    pub fn new(algorithms: Vec<Box<dyn Algorithm>>) -> Self {
+    pub fn new(algorithms: Vec<Box<dyn Algorithm>>, data_path: PathBuf) -> Self {
         let event_queue = EventQueue::new();
-        let data_service = DataService::new();
+        let data_service = DataService::new(data_path.clone());
         let broker: Rc<RefCell<Broker>> = Rc::new(RefCell::new(Broker::new()));
         let runtime = Runtime::new(broker.clone());
 
@@ -56,6 +56,14 @@ impl Backtester {
         };
 
         self.broker.borrow_mut().set_balance(10000.0);
+
+        for algo in &self.algorithms {
+            let subscriptions = algo.get_dataset_subscriptions();
+
+            for subscription in subscriptions {
+                self.data_service.add_dataset(path);
+            }
+        }
 
         let mut current_date = start_date;
         while current_date < end_date {

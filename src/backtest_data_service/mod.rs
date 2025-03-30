@@ -1,12 +1,19 @@
 use chrono::NaiveDateTime;
 use polars_core::prelude::*;
 use polars_io::prelude::*;
+use std::fs;
+use std::hash::Hash;
 use std::path::PathBuf;
 use std::{collections::HashMap, fs::File};
 
 pub struct Dataset {
     tickers: HashMap<String, Ticker>,
     name: String,
+}
+
+pub struct DatasetSubscription {
+    ticker: String,
+    dataset: String,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -24,42 +31,35 @@ pub struct Ticker {
 
 pub struct DataService {
     datasets: HashMap<String, Dataset>,
+    data_directory: PathBuf,
 }
 
 impl DataService {
-    pub fn new() -> Self {
+    pub fn new(data_directory: String) -> Self {
         Self {
             datasets: HashMap::new(),
+            data_directory: PathBuf::from(data_directory),
         }
     }
 
-    pub fn add_dataset(&mut self, path: PathBuf) {
-        let data = read_parquet(
-            "/Users/timmnicolaizik/Dev/AlgotradingPlatform/data/futures/ES/1H_OHLCV/2018-09-21.parquet",
-        ).unwrap();
+    pub fn add_dataset(&mut self, subscription: DatasetSubscription) {
+        let files = fs::read_dir(&self.data_directory).unwrap();
 
-        let mut tickers = HashMap::new();
+        let dataset = Dataset {
+            name: subscription.dataset,
+            tickers: HashMap::new(),
+        };
 
-        tickers.insert(
-            "VX".to_string(),
-            Ticker {
-                name: "VX".to_string(),
-                data_path: "".into(),
-                data,
-                data_pointer: 0,
-            },
-        );
+        for entry in files {
+            let file_path = entry.unwrap().path();
 
-        self.datasets.insert(
-            "NAME".to_string(),
-            Dataset {
-                tickers,
-                name: "VX".to_string(),
-            },
-        );
+            let path_str = file_path.to_str().unwrap();
+            let file_name = path_str.split("/").last().unwrap();
+            println!("{}", file_name);
+        }
     }
 
-    pub fn get_next_data_for_all_datasets(&self) -> HashMap<String, Quote> {
+    pub fn get_next_data_for_all_datasets(&self) -> HashMap<String, Column> {
         let mut data = HashMap::new();
 
         for (dataset_name, dataset) in self.datasets.iter() {

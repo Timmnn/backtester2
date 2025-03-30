@@ -1,3 +1,7 @@
+use std::path::Path;
+use std::path::PathBuf;
+
+use backtester::backtest_data_service::DatasetSubscription;
 use backtester::{
     algorithm::Algorithm,
     backtester::Backtester,
@@ -7,9 +11,7 @@ use backtester::{
 };
 use chrono::NaiveTime;
 
-struct Algo1 {
-    state: usize,
-}
+struct Algo1 {}
 
 impl Algorithm for Algo1 {
     fn on_event(&mut self, event: EventPayload, runtime: &mut Runtime) -> () {
@@ -34,25 +36,17 @@ impl Algorithm for Algo1 {
             EventDefinition::SpecificTime(NaiveTime::from_hms_opt(9, 2, 0).unwrap()),
         ]
     }
-}
 
-struct Algo2 {
-    state: String,
-}
-impl Algorithm for Algo2 {
-    fn on_event(&mut self, _event: EventPayload, runtime: &mut Runtime) -> () {}
-    fn get_event_listeners(&self) -> Vec<EventDefinition> {
+    fn get_dataset_subscriptions(&self) -> Vec<DatasetSubscription> {
         vec![]
     }
 }
 
 fn main() {
-    let mut backtester = Backtester::new(vec![
-        Box::new(Algo1 { state: 1 }),
-        Box::new(Algo2 {
-            state: "".to_string(),
-        }),
-    ]);
+    let mut backtester = Backtester::new(
+        vec![Box::new(Algo1 {})],
+        PathBuf::from("/Users/timmnicolaizik/Dev/vireo/vireo-data/data/"),
+    );
 
     backtester.run();
 }
